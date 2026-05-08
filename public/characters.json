@@ -10,7 +10,7 @@
 
     "role": "Burst DPS",
 
-    "image": "./assets/characters/Hotori.webp",
+    "image": "./assets/characters/hotori.webp",
 
     "description": "Massive burst damage and top-tier synergy.",
 
@@ -22,23 +22,13 @@
 
     "pros": [
       "Huge burst",
-      "Meta unit",
-      "Excellent scaling"
+      "Meta scaling",
+      "Excellent synergy"
     ],
 
     "cons": [
       "Needs setup",
       "Energy hungry"
-    ],
-
-    "weapons": [
-      "Chaos Protocol",
-      "Void Trigger"
-    ],
-
-    "modules": [
-      "Critical Overload",
-      "Dark Reactor"
     ],
 
     "priority": [
@@ -58,10 +48,8 @@
           "Haniel"
         ],
 
-        "description": "Maximum chaos burst synergy."
+        "description": "Maximum burst composition."
       }
-    ],
-
-    "guide": "# Hotori Guide\n\nHotori is currently one of the strongest burst units in the game.\n\n## Rotation\n\n1. Apply setup\n2. Use buffs\n3. Burst combo\n4. Swap cancel\n\n## Notes\n\nVery strong with chaos supports."
+    ]
   }
 ]

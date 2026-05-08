@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<html lang="ru">
+<html lang="en">
 
 <head>
 
@@ -11,11 +11,24 @@
             content="width=device-width, initial-scale=1.0"
     >
 
-    <title>NTE HUB</title>
+    <title>
+        NTE HUB
+    </title>
 
-    <link rel="stylesheet" href="style.css">
+    <meta
+            name="description"
+            content="Neverness to Everness production fan hub with guides, tier lists, teams and builds."
+    >
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+            rel="stylesheet"
+            href="./style.css"
+    >
+
+    <link
+            rel="preconnect"
+            href="https://fonts.googleapis.com"
+    >
 
     <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&display=swap"
@@ -34,132 +47,143 @@
         NTE HUB
     </div>
 
-    <nav>
-
-        <a href="./pages/character.html">
-            Characters
-        </a>
-
-        <a href="./pages/tierlist.html">
-            Tier List
-        </a>
-
-        <a href="#">
-            Teams
-        </a>
-
-        <a href="#">
-            Guides
-        </a>
-
-    </nav>
-
-    <div class="navRight">
+    <div class="navSearch">
 
         <input
                 id="searchInput"
                 placeholder="Search character..."
         >
 
-        <button onclick="toggleAdmin()">
-            Admin
-        </button>
-
     </div>
 
 </header>
 
-<section class="hero">
+<div class="layout">
 
-    <div class="heroContent">
+    <aside class="sidebar">
 
-        <div class="chip">
-            LIVE DATABASE
+        <div class="sidebarSection">
+
+            <h3>
+                Tier
+            </h3>
+
+            <button onclick="setTier('all')">
+                All
+            </button>
+
+            <button onclick="setTier('S+')">
+                S+
+            </button>
+
+            <button onclick="setTier('S')">
+                S
+            </button>
+
+            <button onclick="setTier('A')">
+                A
+            </button>
+
         </div>
 
-        <h1>
-            Neverness to Everness
-        </h1>
+        <div class="sidebarSection">
 
-        <p>
-            Production-level fan hub inspired by Prydwen.
-        </p>
+            <h3>
+                Role
+            </h3>
 
-    </div>
+            <button onclick="setRole('all')">
+                All
+            </button>
 
-</section>
+            <button onclick="setRole('Burst DPS')">
+                Burst DPS
+            </button>
 
-<section class="section">
+            <button onclick="setRole('Support')">
+                Support
+            </button>
 
-    <div class="sectionHeader">
+        </div>
 
-        <h2>
-            Characters
-        </h2>
+        <div class="sidebarSection">
 
-    </div>
+            <h3>
+                Attribute
+            </h3>
 
-    <div
-            id="charactersGrid"
-            class="charactersGrid"
-    ></div>
+            <button onclick="setAttribute('all')">
+                All
+            </button>
 
-</section>
+            <button onclick="setAttribute('Chaos')">
+                Chaos
+            </button>
+
+            <button onclick="setAttribute('Psychic')">
+                Psychic
+            </button>
+
+        </div>
+
+    </aside>
+
+    <main class="content">
+
+        <section class="hero">
+
+            <div class="heroContent">
+
+                <div class="chip">
+                    LIVE DATABASE
+                </div>
+
+                <h1>
+                    Neverness to Everness
+                </h1>
+
+                <p>
+                    Production-level fan hub inspired by Prydwen.
+                </p>
+
+            </div>
+
+        </section>
+
+        <section>
+
+            <div
+                    id="charactersGrid"
+                    class="charactersGrid"
+            ></div>
+
+        </section>
+
+    </main>
+
+</div>
 
 <div
-        id="characterModal"
-        class="characterModal"
+        id="overlay"
+        class="overlay"
 >
 
-    <div class="modalContent">
+    <div class="overlayContent">
 
         <button
                 class="closeButton"
-                onclick="closeModal()"
+                onclick="closeOverlay()"
         >
-            X
+            ✕
         </button>
 
-        <div id="modalBody"></div>
+        <div id="overlayBody"></div>
 
     </div>
 
 </div>
 
-<div
-        id="adminDrawer"
-        class="adminDrawer"
->
-
-    <div class="drawerHeader">
-
-        <h2>
-            Admin Panel
-        </h2>
-
-        <button onclick="toggleAdmin()">
-            X
-        </button>
-
-    </div>
-
-    <input
-            id="charName"
-            placeholder="Character name"
-    >
-
-    <textarea
-            id="charDesc"
-            placeholder="Description"
-    ></textarea>
-
-    <button onclick="addCharacter()">
-        Publish
-    </button>
-
-</div>
-
-<script src="app.js"></script>
+<script src="./app.js"></script>
 
 </body>
 </html>

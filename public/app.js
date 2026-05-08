@@ -1,30 +1,52 @@
 let characters = [];
 
+let currentTier = "all";
+let currentRole = "all";
+let currentAttribute = "all";
+
 async function loadCharacters(){
 
     const response =
-        await fetch(
-            "./data/characters.json"
-        );
+        await fetch("./characters.json");
 
     characters =
         await response.json();
 
-    renderCharacters(characters);
+    renderCharacters();
 }
 
-function renderCharacters(data){
+function renderCharacters(){
 
     const grid =
         document.getElementById(
             "charactersGrid"
         );
 
-    if(!grid) return;
-
     grid.innerHTML = "";
 
-    data.forEach(character => {
+    const filtered =
+        characters.filter(character => {
+
+            const tierMatch =
+                currentTier === "all"
+                || character.tier === currentTier;
+
+            const roleMatch =
+                currentRole === "all"
+                || character.role === currentRole;
+
+            const attributeMatch =
+                currentAttribute === "all"
+                || character.attribute === currentAttribute;
+
+            return (
+                tierMatch
+                && roleMatch
+                && attributeMatch
+            );
+        });
+
+    filtered.forEach(character => {
 
         const card =
             document.createElement("div");
@@ -34,16 +56,10 @@ function renderCharacters(data){
 
         card.innerHTML = `
 
-            <div class="imageWrapper">
-
-                <img
-                    class="characterImage"
-                    src="${character.image}"
-                >
-
-                <div class="imageOverlay"></div>
-
-            </div>
+            <img
+                class="characterImage"
+                src="${character.image}"
+            >
 
             <div class="cardContent">
 
@@ -60,72 +76,47 @@ function renderCharacters(data){
                 </p>
 
                 <div class="tags">
+
                     ${
             character.tags
-                .map(tag => `
-                                <span>${tag}</span>
-                            `)
+                .map(tag =>
+                    `<span>${tag}</span>`
+                )
                 .join("")
         }
+
                 </div>
 
             </div>
         `;
 
         card.onclick = () => {
-
-            window.location.href =
-                `./pages/character.html?id=${character.id}`;
+            openCharacter(character);
         };
 
         grid.appendChild(card);
     });
 }
 
-async function loadCharacterPage(){
+function openCharacter(character){
 
-    const container =
+    const overlay =
         document.getElementById(
-            "guidePage"
+            "overlay"
         );
 
-    if(!container) return;
-
-    const params =
-        new URLSearchParams(
-            window.location.search
+    const body =
+        document.getElementById(
+            "overlayBody"
         );
 
-    const id =
-        params.get("id");
+    body.innerHTML = `
 
-    const response =
-        await fetch(
-            "../data/characters.json"
-        );
+        <div class="guideHero">
 
-    const data =
-        await response.json();
+            <img src="${character.image}">
 
-    const character =
-        data.find(c => c.id === id);
-
-    if(!character){
-
-        container.innerHTML =
-            "<h1>Character not found</h1>";
-
-        return;
-    }
-
-    document.title =
-        `${character.name} Guide | NTE HUB`;
-
-    container.innerHTML = `
-
-        <section class="guideHeroSection">
-
-            <div class="guideInfo">
+            <div>
 
                 <div class="tier">
                     ${character.tier}
@@ -140,25 +131,22 @@ async function loadCharacterPage(){
                 </p>
 
                 <div class="tags">
+
                     ${
         character.tags
-            .map(tag => `
-                                <span>${tag}</span>
-                            `)
+            .map(tag =>
+                `<span>${tag}</span>`
+            )
             .join("")
     }
+
                 </div>
 
             </div>
 
-            <img
-                class="guideHeroImage"
-                src="../${character.image}"
-            >
+        </div>
 
-        </section>
-
-        <section class="guideGrid">
+        <div class="guideSections">
 
             <div class="guideBlock">
 
@@ -167,13 +155,15 @@ async function loadCharacterPage(){
                 </h2>
 
                 <ul>
+
                     ${
         character.pros
-            .map(pro => `
-                                <li>${pro}</li>
-                            `)
+            .map(pro =>
+                `<li>${pro}</li>`
+            )
             .join("")
     }
+
                 </ul>
 
             </div>
@@ -185,71 +175,112 @@ async function loadCharacterPage(){
                 </h2>
 
                 <ul>
+
                     ${
         character.cons
-            .map(con => `
-                                <li>${con}</li>
-                            `)
+            .map(con =>
+                `<li>${con}</li>`
+            )
             .join("")
     }
+
                 </ul>
 
             </div>
 
-        </section>
+            <div class="guideBlock">
 
-        <section class="guideBlock">
+                <h2>
+                    Best Teams
+                </h2>
 
-            <h2>
-                Best Teams
-            </h2>
-
-            ${
+                ${
         character.teams
             .map(team => `
-                        <div class="teamCard">
 
-                            <h3>
-                                ${team.name}
-                            </h3>
+                            <div>
 
-                            <p>
-                                ${team.members.join(" • ")}
-                            </p>
+                                <h3>
+                                    ${team.name}
+                                </h3>
 
-                            <p>
-                                ${team.description}
-                            </p>
+                                <p>
+                                    ${team.members.join(" • ")}
+                                </p>
 
-                        </div>
-                    `)
+                                <p>
+                                    ${team.description}
+                                </p>
+
+                            </div>
+
+                        `)
             .join("")
     }
 
-        </section>
+            </div>
 
-        <section class="guideBlock markdownContent">
+            <div class="guideBlock">
 
-            ${markdownToHtml(character.guide)}
+                <h2>
+                    Build Priority
+                </h2>
 
-        </section>
+                <ol>
+
+                    ${
+        character.priority
+            .map(skill =>
+                `<li>${skill}</li>`
+            )
+            .join("")
+    }
+
+                </ol>
+
+            </div>
+
+        </div>
+
     `;
+
+    overlay.classList.add("active");
 }
 
-function markdownToHtml(markdown){
+function closeOverlay(){
 
-    return markdown
-        .replace(/^# (.*$)/gim,"<h1>$1</h1>")
-        .replace(/^## (.*$)/gim,"<h2>$1</h2>")
-        .replace(/^### (.*$)/gim,"<h3>$1</h3>")
-        .replace(/\n/g,"<br>");
+    document
+        .getElementById("overlay")
+        .classList
+        .remove("active");
+}
+
+function setTier(tier){
+
+    currentTier = tier;
+
+    renderCharacters();
+}
+
+function setRole(role){
+
+    currentRole = role;
+
+    renderCharacters();
+}
+
+function setAttribute(attribute){
+
+    currentAttribute = attribute;
+
+    renderCharacters();
 }
 
 document
     .getElementById(
         "searchInput"
     )
-    ?.addEventListener("input", e => {
+    .addEventListener("input", e => {
 
         const value =
             e.target.value.toLowerCase();
@@ -261,9 +292,47 @@ document
                     .includes(value)
             );
 
-        renderCharacters(filtered);
+        const grid =
+            document.getElementById(
+                "charactersGrid"
+            );
+
+        grid.innerHTML = "";
+
+        filtered.forEach(character => {
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "characterCard";
+
+            card.innerHTML = `
+
+                <img
+                    class="characterImage"
+                    src="${character.image}"
+                >
+
+                <div class="cardContent">
+
+                    <div class="tier">
+                        ${character.tier}
+                    </div>
+
+                    <h2>
+                        ${character.name}
+                    </h2>
+
+                </div>
+            `;
+
+            card.onclick = () => {
+                openCharacter(character);
+            };
+
+            grid.appendChild(card);
+        });
     });
 
 loadCharacters();
-
-loadCharacterPage();
