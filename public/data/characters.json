@@ -1,0 +1,33 @@
+[
+  {
+    "name": "Hatori",
+    "tier": "S+",
+    "attribute": "Chaos",
+    "role": "Burst DPS",
+
+    "description":
+    "Massive burst damage dealer with top-tier synergy.",
+
+    "teams": [
+      {
+        "name": "Chaos Eclipse",
+        "members": [
+          "Hatori",
+          "Lacrimosa",
+          "Mint",
+          "Haniel"
+        ]
+      }
+    ]
+  },
+
+  {
+    "name": "Lacrimosa",
+    "tier": "S",
+    "attribute": "Chaos",
+    "role": "DOT DPS",
+
+    "description":
+    "Applies chaos pressure and DOT effects."
+  }
+]
