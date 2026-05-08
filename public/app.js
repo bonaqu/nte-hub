@@ -31,13 +31,32 @@ function renderCharacters(data){
             "characterCard";
 
         card.innerHTML = `
-      <h2>${character.name}</h2>
+      <img
+        class="characterImage"
+        src="${character.image}"
+      >
 
-      <p>${character.tier}</p>
+      <div class="tier">
+        ${character.tier}
+      </div>
 
-      <p>${character.role}</p>
+      <h2>
+        ${character.name}
+      </h2>
 
-      <p>${character.description}</p>
+      <p>
+        ${character.role}
+      </p>
+
+      <div class="tags">
+        ${
+            character.tags
+                .map(tag => `
+            <span>${tag}</span>
+          `)
+                .join("")
+        }
+      </div>
     `;
 
         card.onclick = () => {
@@ -46,6 +65,15 @@ function renderCharacters(data){
 
         grid.appendChild(card);
     });
+}
+
+function markdownToHtml(markdown){
+
+    return markdown
+        .replace(/^# (.*$)/gim,"<h1>$1</h1>")
+        .replace(/^## (.*$)/gim,"<h2>$1</h2>")
+        .replace(/^### (.*$)/gim,"<h3>$1</h3>")
+        .replace(/\n/g,"<br>");
 }
 
 function openCharacter(character){
@@ -61,28 +89,129 @@ function openCharacter(character){
         );
 
     body.innerHTML = `
-    <h1>${character.name}</h1>
+    <div class="guideHero">
 
-    <p>${character.description}</p>
+      <img
+        class="guideSplash"
+        src="${character.image}"
+      >
 
-    <h3>Teams</h3>
+      <div>
 
-    ${
-        character.teams
-            ? character.teams.map(team => `
-        <div>
-          <h4>${team.name}</h4>
-
-          <p>
-            ${team.members.join(", ")}
-          </p>
+        <div class="tier">
+          ${character.tier}
         </div>
-      `).join("")
-            : "<p>No teams</p>"
+
+        <h1>
+          ${character.name}
+        </h1>
+
+        <p>
+          ${character.description}
+        </p>
+
+      </div>
+
+    </div>
+
+    <div class="guideSection">
+
+      <h2>
+        Pros
+      </h2>
+
+      <ul>
+        ${
+        character.pros
+            .map(pro => `
+            <li>${pro}</li>
+          `)
+            .join("")
     }
+      </ul>
+
+    </div>
+
+    <div class="guideSection">
+
+      <h2>
+        Cons
+      </h2>
+
+      <ul>
+        ${
+        character.cons
+            .map(con => `
+            <li>${con}</li>
+          `)
+            .join("")
+    }
+      </ul>
+
+    </div>
+
+    <div class="guideSection">
+
+      <h2>
+        Teams
+      </h2>
+
+      ${
+        character.teams
+            .map(team => `
+          <div class="teamCard">
+
+            <h3>
+              ${team.name}
+            </h3>
+
+            <p>
+              ${team.members.join(" • ")}
+            </p>
+
+            <p>
+              ${team.description}
+            </p>
+
+          </div>
+        `)
+            .join("")
+    }
+
+    </div>
+
+    <div class="guideMarkdown">
+      ${markdownToHtml(character.guide)}
+    </div>
   `;
 
     modal.classList.add("active");
+
+    updateSEO(character);
+}
+
+function updateSEO(character){
+
+    document.title =
+        `${character.name} Build Guide | NTE HUB`;
+
+    let meta =
+        document.querySelector(
+            'meta[name="description"]'
+        );
+
+    if(!meta){
+
+        meta =
+            document.createElement("meta");
+
+        meta.name = "description";
+
+        document.head.appendChild(meta);
+    }
+
+    meta.content =
+        character.description;
 }
 
 function closeModal(){
@@ -103,34 +232,6 @@ function toggleAdmin(){
         )
         .classList
         .toggle("active");
-}
-
-function addCharacter(){
-
-    const name =
-        document
-            .getElementById(
-                "charName"
-            )
-            .value;
-
-    const desc =
-        document
-            .getElementById(
-                "charDesc"
-            )
-            .value;
-
-    const newCharacter = {
-        name,
-        tier:"NEW",
-        role:"Custom",
-        description:desc
-    };
-
-    characters.push(newCharacter);
-
-    renderCharacters(characters);
 }
 
 document

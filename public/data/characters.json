@@ -1,33 +1,86 @@
 [
   {
-    "name": "Hatori",
+    "id": "hotori",
+
+    "name": "Hotori",
+
     "tier": "S+",
+
     "attribute": "Chaos",
+
     "role": "Burst DPS",
 
+    "image":
+    "./assets/characters/hotori.webp",
+
     "description":
-    "Massive burst damage dealer with top-tier synergy.",
+    "Massive burst damage and top-tier synergy.",
+
+    "tags": [
+      "meta",
+      "burst",
+      "chaos"
+    ],
+
+    "pros": [
+      "Huge burst",
+      "Meta unit",
+      "Excellent scaling"
+    ],
+
+    "cons": [
+      "Needs setup",
+      "Energy hungry"
+    ],
+
+    "weapons": [
+      "Chaos Protocol",
+      "Void Trigger"
+    ],
+
+    "modules": [
+      "Critical Overload",
+      "Dark Reactor"
+    ],
+
+    "priority": [
+      "Ultimate",
+      "Skill",
+      "Passive"
+    ],
 
     "teams": [
       {
-        "name": "Chaos Eclipse",
+        "name":
+        "Chaos Eclipse",
+
         "members": [
-          "Hatori",
+          "Hotori",
           "Lacrimosa",
           "Mint",
           "Haniel"
-        ]
+        ],
+
+        "description":
+        "Maximum chaos burst synergy."
       }
-    ]
-  },
+    ],
 
-  {
-    "name": "Lacrimosa",
-    "tier": "S",
-    "attribute": "Chaos",
-    "role": "DOT DPS",
+    "guide": `
+    # Hotori Guide
 
-    "description":
-    "Applies chaos pressure and DOT effects."
+    Hotori is currently one of the strongest burst units in the game.
+
+    ## Rotation
+
+    1. Apply setup
+    2. Use buffs
+    3. Burst combo
+    4. Swap cancel
+
+    ## Notes
+
+    Very strong with chaos supports.
+    `
   }
 ]
