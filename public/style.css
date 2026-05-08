@@ -540,4 +540,119 @@ button{
 
     }
 
+    /* FILTERS */
+
+    .filterSection{
+        margin-top:40px;
+    }
+
+    .filterSection h3{
+        margin-bottom:14px;
+    }
+
+    .filterSection button{
+        width:100%;
+        margin-bottom:10px;
+    }
+
+    /* TIER PAGE */
+
+    .tierPage{
+        padding:60px;
+    }
+
+    .tierHero{
+        margin-bottom:50px;
+    }
+
+    .tierHero h1{
+        font-size:72px;
+    }
+
+    .tierSection{
+        display:grid;
+        grid-template-columns:
+        120px 1fr;
+
+        margin-bottom:30px;
+
+        gap:20px;
+    }
+
+    .tierLabel{
+        border-radius:24px;
+
+        display:flex;
+
+        align-items:center;
+
+        justify-content:center;
+
+        font-size:42px;
+
+        font-weight:800;
+
+        background:
+                linear-gradient(
+                        135deg,
+                        #8b5cf6,
+                        #06b6d4
+                );
+    }
+
+    .tierCharacters{
+        display:grid;
+
+        grid-template-columns:
+        repeat(auto-fill,minmax(220px,1fr));
+
+        gap:20px;
+    }
+
+    .tierCharacter{
+        background:
+                rgba(255,255,255,.04);
+
+        border:
+                1px solid rgba(255,255,255,.06);
+
+        border-radius:24px;
+
+        overflow:hidden;
+
+        cursor:pointer;
+
+        transition:.3s;
+    }
+
+    .tierCharacter:hover{
+        transform:translateY(-6px);
+    }
+
+    .tierCharacter img{
+        width:100%;
+        height:260px;
+        object-fit:cover;
+    }
+
+    .tierCharacter h3{
+        padding:18px;
+    }
+
+    @media(max-width:900px){
+
+        .tierPage{
+            padding:24px;
+        }
+
+        .tierHero h1{
+            font-size:42px;
+        }
+
+        .tierSection{
+            grid-template-columns:1fr;
+        }
+
+    }
+
 }
