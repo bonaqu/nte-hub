@@ -10,11 +10,9 @@
 
     "role": "Burst DPS",
 
-    "image":
-    "./assets/characters/hotori.webp",
+    "image": "./assets/characters/hotori.webp",
 
-    "description":
-    "Massive burst damage and top-tier synergy.",
+    "description": "Massive burst damage and top-tier synergy.",
 
     "tags": [
       "meta",
@@ -51,8 +49,7 @@
 
     "teams": [
       {
-        "name":
-        "Chaos Eclipse",
+        "name": "Chaos Eclipse",
 
         "members": [
           "Hotori",
@@ -61,26 +58,10 @@
           "Haniel"
         ],
 
-        "description":
-        "Maximum chaos burst synergy."
+        "description": "Maximum chaos burst synergy."
       }
     ],
 
-    "guide": `
-    # Hotori Guide
-
-    Hotori is currently one of the strongest burst units in the game.
-
-    ## Rotation
-
-    1. Apply setup
-    2. Use buffs
-    3. Burst combo
-    4. Swap cancel
-
-    ## Notes
-
-    Very strong with chaos supports.
-    `
+    "guide": "# Hotori Guide\n\nHotori is currently one of the strongest burst units in the game.\n\n## Rotation\n\n1. Apply setup\n2. Use buffs\n3. Burst combo\n4. Swap cancel\n\n## Notes\n\nVery strong with chaos supports."
   }
 ]

@@ -239,101 +239,129 @@ button{
     cursor:pointer;
 }
 
+/* CHARACTER */
+
+.characterImage{
+    width:100%;
+    height:280px;
+    object-fit:cover;
+    border-radius:18px;
+    margin-bottom:18px;
+}
+
+.tags{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:14px;
+}
+
+.tags span{
+    background:#111827;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    color:#cbd5e1;
+}
+
+.tier{
+    display:inline-block;
+    padding:8px 12px;
+    border-radius:999px;
+    background:
+            linear-gradient(
+                    135deg,
+                    #8b5cf6,
+                    #06b6d4
+            );
+    margin-bottom:16px;
+    font-size:12px;
+    font-weight:700;
+}
+
+/* MODAL */
+
+.guideHero{
+    display:grid;
+    grid-template-columns:350px 1fr;
+    gap:32px;
+    align-items:start;
+}
+
+.guideSplash{
+    width:100%;
+    border-radius:24px;
+    border:
+            1px solid rgba(255,255,255,.08);
+}
+
+.guideSection{
+    margin-top:40px;
+}
+
+.guideSection h2{
+    margin-bottom:16px;
+}
+
+.teamCard{
+    margin-top:20px;
+    background:
+            rgba(255,255,255,.04);
+    padding:20px;
+    border-radius:20px;
+    border:
+            1px solid rgba(255,255,255,.06);
+}
+
+.guideMarkdown{
+    margin-top:50px;
+    line-height:1.9;
+    color:#dbe4ee;
+}
+
+/* SCROLLBAR */
+
+::-webkit-scrollbar{
+    width:10px;
+}
+
+::-webkit-scrollbar-track{
+    background:#060816;
+}
+
+::-webkit-scrollbar-thumb{
+    background:#1e293b;
+    border-radius:999px;
+}
+
+/* MOBILE */
+
 @media(max-width:900px){
+
+    .hero{
+        padding:60px 24px;
+    }
 
     .hero h1{
         font-size:48px;
     }
 
+    .section{
+        padding:24px;
+    }
+
     .navbar{
         flex-direction:column;
-
         gap:20px;
-    }
-
-    .characterImage{
-        width:100%;
-
-        height:280px;
-
-        object-fit:cover;
-
-        border-radius:18px;
-
-        margin-bottom:18px;
-    }
-
-    .tags{
-        display:flex;
-
-        gap:8px;
-
-        flex-wrap:wrap;
-
-        margin-top:14px;
-    }
-
-    .tags span{
-        background:#111827;
-
-        padding:6px 10px;
-
-        border-radius:999px;
-
-        font-size:12px;
+        padding:20px;
     }
 
     .guideHero{
-        display:grid;
-
-        grid-template-columns:
-    350px 1fr;
-
-        gap:32px;
+        grid-template-columns:1fr;
     }
 
-    .guideSplash{
+    .adminDrawer{
         width:100%;
-
-        border-radius:24px;
-    }
-
-    .guideSection{
-        margin-top:40px;
-    }
-
-    .teamCard{
-        margin-top:20px;
-
-        background:
-                rgba(255,255,255,.04);
-
-        padding:20px;
-
-        border-radius:20px;
-    }
-
-    .guideMarkdown{
-        margin-top:50px;
-
-        line-height:1.8;
-    }
-
-    .tier{
-        display:inline-block;
-
-        padding:8px 12px;
-
-        border-radius:999px;
-
-        background:
-                linear-gradient(
-                        135deg,
-                        #8b5cf6,
-                        #06b6d4
-                );
-
-        margin-bottom:16px;
     }
 
 }
