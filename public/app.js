@@ -1,10 +1,5 @@
 let characters = [];
 
-const grid =
-    document.getElementById(
-        "charactersGrid"
-    );
-
 async function loadCharacters(){
 
     const response =
@@ -20,6 +15,13 @@ async function loadCharacters(){
 
 function renderCharacters(data){
 
+    const grid =
+        document.getElementById(
+            "charactersGrid"
+        );
+
+    if(!grid) return;
+
     grid.innerHTML = "";
 
     data.forEach(character => {
@@ -31,40 +33,207 @@ function renderCharacters(data){
             "characterCard";
 
         card.innerHTML = `
-      <img
-        class="characterImage"
-        src="${character.image}"
-      >
 
-      <div class="tier">
-        ${character.tier}
-      </div>
+            <div class="imageWrapper">
 
-      <h2>
-        ${character.name}
-      </h2>
+                <img
+                    class="characterImage"
+                    src="${character.image}"
+                >
 
-      <p>
-        ${character.role}
-      </p>
+                <div class="imageOverlay"></div>
 
-      <div class="tags">
-        ${
+            </div>
+
+            <div class="cardContent">
+
+                <div class="tier">
+                    ${character.tier}
+                </div>
+
+                <h2>
+                    ${character.name}
+                </h2>
+
+                <p>
+                    ${character.role}
+                </p>
+
+                <div class="tags">
+                    ${
             character.tags
                 .map(tag => `
-            <span>${tag}</span>
-          `)
+                                <span>${tag}</span>
+                            `)
                 .join("")
         }
-      </div>
-    `;
+                </div>
+
+            </div>
+        `;
 
         card.onclick = () => {
-            openCharacter(character);
+
+            window.location.href =
+                `./pages/character.html?id=${character.id}`;
         };
 
         grid.appendChild(card);
     });
+}
+
+async function loadCharacterPage(){
+
+    const container =
+        document.getElementById(
+            "guidePage"
+        );
+
+    if(!container) return;
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    const id =
+        params.get("id");
+
+    const response =
+        await fetch(
+            "../data/characters.json"
+        );
+
+    const data =
+        await response.json();
+
+    const character =
+        data.find(c => c.id === id);
+
+    if(!character){
+
+        container.innerHTML =
+            "<h1>Character not found</h1>";
+
+        return;
+    }
+
+    document.title =
+        `${character.name} Guide | NTE HUB`;
+
+    container.innerHTML = `
+
+        <section class="guideHeroSection">
+
+            <div class="guideInfo">
+
+                <div class="tier">
+                    ${character.tier}
+                </div>
+
+                <h1>
+                    ${character.name}
+                </h1>
+
+                <p>
+                    ${character.description}
+                </p>
+
+                <div class="tags">
+                    ${
+        character.tags
+            .map(tag => `
+                                <span>${tag}</span>
+                            `)
+            .join("")
+    }
+                </div>
+
+            </div>
+
+            <img
+                class="guideHeroImage"
+                src="../${character.image}"
+            >
+
+        </section>
+
+        <section class="guideGrid">
+
+            <div class="guideBlock">
+
+                <h2>
+                    Pros
+                </h2>
+
+                <ul>
+                    ${
+        character.pros
+            .map(pro => `
+                                <li>${pro}</li>
+                            `)
+            .join("")
+    }
+                </ul>
+
+            </div>
+
+            <div class="guideBlock">
+
+                <h2>
+                    Cons
+                </h2>
+
+                <ul>
+                    ${
+        character.cons
+            .map(con => `
+                                <li>${con}</li>
+                            `)
+            .join("")
+    }
+                </ul>
+
+            </div>
+
+        </section>
+
+        <section class="guideBlock">
+
+            <h2>
+                Best Teams
+            </h2>
+
+            ${
+        character.teams
+            .map(team => `
+                        <div class="teamCard">
+
+                            <h3>
+                                ${team.name}
+                            </h3>
+
+                            <p>
+                                ${team.members.join(" • ")}
+                            </p>
+
+                            <p>
+                                ${team.description}
+                            </p>
+
+                        </div>
+                    `)
+            .join("")
+    }
+
+        </section>
+
+        <section class="guideBlock markdownContent">
+
+            ${markdownToHtml(character.guide)}
+
+        </section>
+    `;
 }
 
 function markdownToHtml(markdown){
@@ -76,169 +245,11 @@ function markdownToHtml(markdown){
         .replace(/\n/g,"<br>");
 }
 
-function openCharacter(character){
-
-    const modal =
-        document.getElementById(
-            "characterModal"
-        );
-
-    const body =
-        document.getElementById(
-            "modalBody"
-        );
-
-    body.innerHTML = `
-    <div class="guideHero">
-
-      <img
-        class="guideSplash"
-        src="${character.image}"
-      >
-
-      <div>
-
-        <div class="tier">
-          ${character.tier}
-        </div>
-
-        <h1>
-          ${character.name}
-        </h1>
-
-        <p>
-          ${character.description}
-        </p>
-
-      </div>
-
-    </div>
-
-    <div class="guideSection">
-
-      <h2>
-        Pros
-      </h2>
-
-      <ul>
-        ${
-        character.pros
-            .map(pro => `
-            <li>${pro}</li>
-          `)
-            .join("")
-    }
-      </ul>
-
-    </div>
-
-    <div class="guideSection">
-
-      <h2>
-        Cons
-      </h2>
-
-      <ul>
-        ${
-        character.cons
-            .map(con => `
-            <li>${con}</li>
-          `)
-            .join("")
-    }
-      </ul>
-
-    </div>
-
-    <div class="guideSection">
-
-      <h2>
-        Teams
-      </h2>
-
-      ${
-        character.teams
-            .map(team => `
-          <div class="teamCard">
-
-            <h3>
-              ${team.name}
-            </h3>
-
-            <p>
-              ${team.members.join(" • ")}
-            </p>
-
-            <p>
-              ${team.description}
-            </p>
-
-          </div>
-        `)
-            .join("")
-    }
-
-    </div>
-
-    <div class="guideMarkdown">
-      ${markdownToHtml(character.guide)}
-    </div>
-  `;
-
-    modal.classList.add("active");
-
-    updateSEO(character);
-}
-
-function updateSEO(character){
-
-    document.title =
-        `${character.name} Build Guide | NTE HUB`;
-
-    let meta =
-        document.querySelector(
-            'meta[name="description"]'
-        );
-
-    if(!meta){
-
-        meta =
-            document.createElement("meta");
-
-        meta.name = "description";
-
-        document.head.appendChild(meta);
-    }
-
-    meta.content =
-        character.description;
-}
-
-function closeModal(){
-
-    document
-        .getElementById(
-            "characterModal"
-        )
-        .classList
-        .remove("active");
-}
-
-function toggleAdmin(){
-
-    document
-        .getElementById(
-            "adminDrawer"
-        )
-        .classList
-        .toggle("active");
-}
-
 document
     .getElementById(
         "searchInput"
     )
-    .addEventListener("input", e => {
+    ?.addEventListener("input", e => {
 
         const value =
             e.target.value.toLowerCase();
@@ -254,3 +265,5 @@ document
     });
 
 loadCharacters();
+
+loadCharacterPage();

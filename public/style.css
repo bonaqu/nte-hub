@@ -364,4 +364,180 @@ button{
         width:100%;
     }
 
+    /* LAYOUT */
+
+    .layout{
+        display:grid;
+        grid-template-columns:
+        280px 1fr;
+    }
+
+    .sidebar{
+        position:sticky;
+        top:0;
+
+        height:100vh;
+
+        padding:32px;
+
+        border-right:
+                1px solid rgba(255,255,255,.06);
+
+        background:
+                rgba(7,10,20,.8);
+
+        backdrop-filter:blur(20px);
+    }
+
+    .sidebarLogo{
+        font-size:28px;
+        font-weight:800;
+        margin-bottom:40px;
+    }
+
+    .sidebarNav{
+        display:flex;
+        flex-direction:column;
+        gap:14px;
+    }
+
+    .sidebarNav a{
+        color:#cbd5e1;
+        text-decoration:none;
+
+        padding:14px;
+        border-radius:14px;
+
+        transition:.25s;
+    }
+
+    .sidebarNav a:hover{
+        background:
+                rgba(255,255,255,.05);
+    }
+
+    /* CARD */
+
+    .imageWrapper{
+        position:relative;
+        overflow:hidden;
+        border-radius:22px;
+    }
+
+    .imageOverlay{
+        position:absolute;
+        inset:0;
+
+        background:
+                linear-gradient(
+                        to top,
+                        rgba(0,0,0,.7),
+                        transparent
+                );
+    }
+
+    .cardContent{
+        padding-top:20px;
+    }
+
+    .characterCard{
+        overflow:hidden;
+    }
+
+    .characterCard:hover .characterImage{
+        transform:scale(1.05);
+    }
+
+    .characterImage{
+        transition:0.4s;
+    }
+
+    /* GUIDE PAGE */
+
+    .guidePage{
+        padding:60px;
+    }
+
+    .guideHeroSection{
+        display:grid;
+        grid-template-columns:
+        1fr 500px;
+
+        gap:40px;
+
+        align-items:center;
+    }
+
+    .guideHeroImage{
+        width:100%;
+        border-radius:28px;
+    }
+
+    .guideInfo h1{
+        font-size:72px;
+        margin:12px 0;
+    }
+
+    .guideGrid{
+        display:grid;
+        grid-template-columns:
+        repeat(2,1fr);
+
+        gap:24px;
+
+        margin-top:40px;
+    }
+
+    .guideBlock{
+        margin-top:30px;
+
+        background:
+                rgba(255,255,255,.04);
+
+        border:
+                1px solid rgba(255,255,255,.06);
+
+        padding:28px;
+
+        border-radius:28px;
+    }
+
+    .markdownContent{
+        line-height:1.9;
+    }
+
+    /* MOBILE */
+
+    @media(max-width:1200px){
+
+        .guideHeroSection{
+            grid-template-columns:1fr;
+        }
+
+    }
+
+    @media(max-width:900px){
+
+        .layout{
+            grid-template-columns:1fr;
+        }
+
+        .sidebar{
+            display:none;
+        }
+
+        .guidePage{
+            padding:24px;
+        }
+
+        .guideInfo h1{
+            font-size:42px;
+        }
+
+        .guideGrid{
+            grid-template-columns:1fr;
+        }
+
+    }
+
 }
