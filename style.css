@@ -1,0 +1,178 @@
+body{
+    margin:0;
+    font-family:Inter,sans-serif;
+    background:#060816;
+    color:white;
+}
+
+.bg{
+    position:fixed;
+    inset:0;
+
+    background:
+            radial-gradient(circle at top left,#312e81 0%,transparent 30%),
+            radial-gradient(circle at bottom right,#0f766e 0%,transparent 30%),
+            #060816;
+
+    z-index:-1;
+}
+
+.navbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:24px 40px;
+
+    position:sticky;
+    top:0;
+
+    backdrop-filter:blur(18px);
+
+    background:rgba(5,8,22,.7);
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+nav{
+    display:flex;
+    gap:24px;
+}
+
+nav a{
+    color:#cbd5e1;
+    text-decoration:none;
+}
+
+.hero{
+    padding:100px 60px;
+}
+
+.hero h1{
+    font-size:82px;
+    margin:10px 0;
+}
+
+.hero p{
+    color:#94a3b8;
+    max-width:700px;
+    line-height:1.7;
+}
+
+.chip{
+    display:inline-block;
+
+    padding:10px 14px;
+
+    border-radius:999px;
+
+    background:#111827;
+}
+
+.heroButtons{
+    display:flex;
+    gap:16px;
+    margin-top:30px;
+}
+
+button{
+    border:none;
+
+    padding:14px 18px;
+
+    border-radius:16px;
+
+    background:
+            linear-gradient(
+                    135deg,
+                    #8b5cf6,
+                    #06b6d4
+            );
+
+    color:white;
+
+    font-weight:700;
+
+    cursor:pointer;
+}
+
+.secondary{
+    background:#111827;
+}
+
+.section{
+    padding:40px 60px;
+}
+
+.charactersGrid{
+    display:grid;
+
+    grid-template-columns:
+    repeat(auto-fit,minmax(320px,1fr));
+
+    gap:24px;
+}
+
+.characterCard{
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    border-radius:28px;
+
+    padding:24px;
+
+    transition:.3s;
+
+    backdrop-filter:blur(18px);
+}
+
+.characterCard:hover{
+    transform:translateY(-6px);
+
+    border-color:#8b5cf6;
+}
+
+.adminDrawer{
+    position:fixed;
+
+    top:0;
+    right:-450px;
+
+    width:450px;
+    height:100vh;
+
+    background:#08101f;
+
+    transition:.3s;
+
+    padding:28px;
+
+    border-left:
+            1px solid rgba(255,255,255,.08);
+}
+
+.adminDrawer.active{
+    right:0;
+}
+
+input,textarea{
+    width:100%;
+
+    margin-top:14px;
+
+    padding:14px;
+
+    background:#111827;
+
+    border:
+            1px solid rgba(255,255,255,.08);
+
+    border-radius:16px;
+
+    color:white;
+}
+
+textarea{
+    min-height:180px;
+}
