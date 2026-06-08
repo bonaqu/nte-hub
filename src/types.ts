@@ -162,6 +162,25 @@ export interface User {
   role: Role;
 }
 
+export interface AdminUser extends User {
+  status: 'active' | 'deleted' | 'banned';
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AppSettings {
+  site: {
+    title: string;
+    language: 'ru';
+    registrationEnabled: boolean;
+    leaksRequireApproval: boolean;
+  };
+  seo: {
+    canonical: string;
+    description: string;
+  };
+}
+
 export interface Source {
   id: string;
   sourceType: 'telegram' | 'website' | 'youtube' | 'twitter/x' | 'manual';

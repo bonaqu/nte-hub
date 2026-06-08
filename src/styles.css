@@ -1287,10 +1287,71 @@
     object-fit: cover;
   }
 
+  .user-table {
+    display: grid;
+    gap: 8px;
+  }
+
+  .user-table article {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto minmax(150px, 0.5fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--surface-strong) 76%, transparent);
+  }
+
+  .user-table article > div,
+  .user-table label {
+    display: grid;
+    gap: 4px;
+  }
+
+  .user-table span,
+  .user-table label {
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .status-label {
+    inline-size: fit-content;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .status-label.status-active {
+    border-color: color-mix(in srgb, var(--lime) 55%, transparent);
+    color: var(--lime);
+  }
+
+  .status-label.status-deleted,
+  .status-label.status-banned {
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+    color: var(--danger);
+  }
+
   .entity-form,
   .auth-panel {
     display: grid;
     gap: 12px;
+  }
+
+  .toggle-row {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .toggle-row input {
+    inline-size: 18px;
+    block-size: 18px;
+    accent-color: var(--cyan);
   }
 
   .auth-panel {
@@ -1461,6 +1522,11 @@
     .news-card,
     .video-card {
       grid-template-columns: 1fr;
+    }
+
+    .user-table article {
+      grid-template-columns: 1fr;
+      align-items: stretch;
     }
 
     .hero-band {

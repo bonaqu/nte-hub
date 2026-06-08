@@ -332,6 +332,15 @@ async function handleAuth(request, env, parts, ctx) {
     const existing = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM users',
     ).first();
+    const siteSettings = await getSetting(env, 'site', {
+      registrationEnabled: true,
+    });
+    if (
+      Number(existing.count) > 0 &&
+      siteSettings.registrationEnabled === false
+    ) {
+      return json({ error: 'Регистрация временно отключена' }, 403);
+    }
     if (
       Number(existing.count) === 0 &&
       env.OWNER_BOOTSTRAP_TOKEN &&
@@ -551,6 +560,12 @@ async function handleUsers(request, env, parts, ctx) {
     if (!target) {
       return json({ error: 'Пользователь не найден' }, 404);
     }
+    if (target.status !== 'active') {
+      return json(
+        { error: 'Роль можно менять только активному аккаунту' },
+        409,
+      );
+    }
     if (!(nextRole in ROLE_WEIGHT)) {
       return json({ error: 'Неизвестная роль' }, 400);
     }
@@ -604,6 +619,9 @@ async function handleUsers(request, env, parts, ctx) {
       'UPDATE users SET status = ?, updated_at = current_timestamp WHERE id = ?',
     )
       .bind('deleted', parts[1])
+      .run();
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?')
+      .bind(parts[1])
       .run();
     ctx.waitUntil(logAudit(env, actor.id, 'users.delete', parts[1], {}));
     return json({ data: { success: true } });
@@ -1329,20 +1347,61 @@ async function handleSettings(request, env, ctx) {
   if (request.method === 'PATCH') {
     const actor = await requireRole(request, env, ADMIN_ROLE);
     const body = await readJson(request);
-    for (const [key, value] of Object.entries(body)) {
-      await env.DB.prepare(
-        `INSERT INTO settings (key, value_json, updated_by)
-         VALUES (?, ?, ?)
-         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_by = excluded.updated_by, updated_at = current_timestamp`,
-      )
-        .bind(key, JSON.stringify(value), actor.id)
-        .run();
+    const allowedKeys = new Set(['site', 'seo']);
+    const entries = Object.entries(body).map(([key, value]) => {
+      if (!allowedKeys.has(key)) {
+        throwHttp(`Настройка ${key} не поддерживается`, 400);
+      }
+      return [key, normalizeSetting(key, value)];
+    });
+    if (!entries.length) {
+      throwHttp('Нет настроек для сохранения', 400);
     }
+    await env.DB.batch(
+      entries.map(([key, value]) =>
+        env.DB.prepare(
+          `INSERT INTO settings (key, value_json, updated_by)
+           VALUES (?, ?, ?)
+           ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_by = excluded.updated_by, updated_at = current_timestamp`,
+        ).bind(key, JSON.stringify(value), actor.id),
+      ),
+    );
     ctx.waitUntil(logAudit(env, actor.id, 'settings.update', 'settings', body));
     return json({ data: { success: true } });
   }
 
   return json({ error: 'Метод не поддерживается' }, 405);
+}
+
+async function getSetting(env, key, fallback) {
+  const row = await env.DB.prepare(
+    'SELECT value_json FROM settings WHERE key = ?',
+  )
+    .bind(key)
+    .first();
+  return row ? parseJson(row.value_json, fallback) : fallback;
+}
+
+function normalizeSetting(key, value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throwHttp(`Настройка ${key} должна быть объектом`, 400);
+  }
+
+  if (key === 'site') {
+    return {
+      title: cleanString(value.title || 'NTE Meta', 2, 60),
+      language: 'ru',
+      registrationEnabled: value.registrationEnabled !== false,
+      leaksRequireApproval: true,
+    };
+  }
+
+  const canonical = cleanString(value.canonical, 8, 300);
+  validateResourceUrl(canonical, 'canonical');
+  return {
+    canonical,
+    description: cleanString(value.description, 20, 180),
+  };
 }
 
 function serializeCharacter(row) {

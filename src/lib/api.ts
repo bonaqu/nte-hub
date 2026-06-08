@@ -1,5 +1,12 @@
 import { seedData } from '../data/seed';
-import type { Comment, SiteData, User } from '../types';
+import type {
+  AdminUser,
+  AppSettings,
+  Comment,
+  Role,
+  SiteData,
+  User,
+} from '../types';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 let sessionToken = '';
@@ -228,6 +235,34 @@ export async function deleteComment(id: string) {
 
 export async function loadModerationComments() {
   return request<Comment[]>('/api/comments');
+}
+
+export async function loadUsers() {
+  return request<AdminUser[]>('/api/users');
+}
+
+export async function updateUserRole(id: string, role: Role) {
+  return request<{ success: boolean }>(`/api/users/${id}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deleteUser(id: string) {
+  return request<{ success: boolean }>(`/api/users/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function loadSettings() {
+  return request<AppSettings>('/api/settings');
+}
+
+export async function updateSettings(settings: AppSettings) {
+  return request<{ success: boolean }>('/api/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(settings),
+  });
 }
 
 export async function loadReactionSummary(

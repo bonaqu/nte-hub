@@ -36,11 +36,14 @@ import {
   changePassword,
   createComment,
   deleteComment,
+  deleteUser,
   hasApiBase,
   loadComments,
   loadModerationComments,
   loadReactionSummary,
+  loadSettings,
   loadSiteData,
+  loadUsers,
   login,
   logout,
   me,
@@ -49,16 +52,21 @@ import {
   sendReaction,
   updateComment,
   updateProfile,
+  updateSettings,
+  updateUserRole,
 } from './lib/api';
 import { applyMarkdownAction, MarkdownPreview } from './lib/markdown';
 import { getYoutubeEmbedUrl } from './lib/youtube';
 import type {
+  AdminUser,
+  AppSettings,
   Character,
   Comment,
   Guide,
   GuideSection,
   LeakItem,
   NewsItem,
+  Role,
   SiteData,
   Tier,
   User,
@@ -1901,7 +1909,7 @@ function AdminPage({
             {tab === 'comments' ? (
               <AdminComments data={data} user={user} />
             ) : null}
-            {tab === 'users' ? <AdminUsers /> : null}
+            {tab === 'users' ? <AdminUsers actor={user} /> : null}
             {tab === 'settings' ? <AdminSettings /> : null}
             {tab === 'sources' ? <AdminSources data={data} /> : null}
           </>
@@ -2590,44 +2598,308 @@ function AdminComments({ data, user }: { data: SiteData; user: User }) {
   );
 }
 
-function AdminUsers() {
+const userRoles: Role[] = ['user', 'moderator', 'editor', 'admin', 'owner'];
+
+function AdminUsers({ actor }: { actor: User }) {
+  const [users, setUsers] = useState<AdminUser[]>(
+    hasApiBase()
+      ? []
+      : [{ ...actor, status: 'active', createdAt: new Date().toISOString() }],
+  );
+  const [loading, setLoading] = useState(hasApiBase());
+  const [message, setMessage] = useState('');
+  const [actionId, setActionId] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!hasApiBase()) return;
+    let mounted = true;
+    loadUsers().then((result) => {
+      if (!mounted) return;
+      if (result.ok) {
+        setUsers(result.data);
+      } else {
+        setMessage(result.error);
+      }
+      setLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function changeRole(target: AdminUser, role: Role) {
+    setActionId(target.id);
+    const result = await updateUserRole(target.id, role);
+    if (result.ok) {
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === target.id ? { ...user, role } : user,
+        ),
+      );
+      setMessage(`Роль ${target.displayName} изменена на ${role}.`);
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+  }
+
+  async function confirmDelete() {
+    const target = deleteTarget;
+    if (!target) return;
+    deleteDialogRef.current?.close();
+    setActionId(target.id);
+    const result = await deleteUser(target.id);
+    if (result.ok) {
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === target.id ? { ...user, status: 'deleted' } : user,
+        ),
+      );
+      setMessage(`Пользователь ${target.displayName} удален.`);
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+    setDeleteTarget(null);
+  }
+
   return (
     <div className="admin-panel">
-      <h2>Пользователи и роли</h2>
-      <p>
-        Worker endpoints: GET /api/users, PATCH /api/users/:id/role, DELETE
-        /api/users/:id. Роли owner/admin/editor/moderator/user проверяются на
-        backend.
+      <div className="panel-title-row">
+        <div>
+          <p className="eyebrow">RBAC на Worker</p>
+          <h2>Пользователи и роли</h2>
+        </div>
+        <span>{users.length} аккаунтов</span>
+      </div>
+      <p className="form-message" aria-live="polite">
+        {loading ? 'Загружаем пользователей...' : message}
       </p>
-      <EntityForm
-        endpoint="/api/users/demo-user/role"
-        title="Смена роли"
-        fields={['role']}
-        method="PATCH"
-      />
+      <div className="user-table">
+        {users.map((target) => (
+          <article key={target.id}>
+            <div>
+              <strong>{target.displayName}</strong>
+              <span>@{target.username}</span>
+            </div>
+            <span className={`status-label status-${target.status}`}>
+              {target.status}
+            </span>
+            <label>
+              Роль
+              <select
+                value={target.role}
+                disabled={
+                  target.id === actor.id ||
+                  target.status !== 'active' ||
+                  (actor.role !== 'owner' &&
+                    roleWeight[target.role] >= roleWeight.admin) ||
+                  actionId === target.id
+                }
+                onChange={(event) =>
+                  changeRole(target, event.target.value as Role)
+                }
+              >
+                {userRoles.map((role) => (
+                  <option
+                    value={role}
+                    key={role}
+                    disabled={
+                      actor.role !== 'owner' &&
+                      roleWeight[role] >= roleWeight.admin
+                    }
+                  >
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {actor.role === 'owner' && target.id !== actor.id ? (
+              <button
+                className="ghost-button danger"
+                type="button"
+                disabled={target.status !== 'active' || actionId === target.id}
+                onClick={() => {
+                  setDeleteTarget(target);
+                  deleteDialogRef.current?.showModal();
+                }}
+              >
+                <Trash2 aria-hidden="true" />
+                Удалить
+              </button>
+            ) : null}
+          </article>
+        ))}
+      </div>
+      <dialog
+        className="confirm-dialog"
+        ref={deleteDialogRef}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <form method="dialog">
+          <h2>Удалить пользователя?</h2>
+          <p>
+            Аккаунт {deleteTarget?.displayName} потеряет доступ, его активные
+            сессии перестанут работать.
+          </p>
+          <div className="button-row">
+            <button className="ghost-button" value="cancel">
+              Отменить
+            </button>
+            <button
+              className="primary-button danger-action"
+              type="button"
+              onClick={confirmDelete}
+            >
+              <Trash2 aria-hidden="true" />
+              Удалить аккаунт
+            </button>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }
 
+const defaultSettings: AppSettings = {
+  site: {
+    title: 'NTE Meta',
+    language: 'ru',
+    registrationEnabled: true,
+    leaksRequireApproval: true,
+  },
+  seo: {
+    canonical: 'https://bonaqu.github.io/nte-hub/',
+    description:
+      'Русскоязычный meta-hub по Neverness to Everness с глубокими гайдами и тир-листами.',
+  },
+};
+
 function AdminSettings() {
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [loading, setLoading] = useState(hasApiBase());
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!hasApiBase()) return;
+    let mounted = true;
+    loadSettings().then((result) => {
+      if (!mounted) return;
+      if (result.ok) {
+        setSettings({
+          site: { ...defaultSettings.site, ...result.data.site },
+          seo: { ...defaultSettings.seo, ...result.data.seo },
+        });
+      } else {
+        setMessage(result.error);
+      }
+      setLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function saveSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!hasApiBase()) {
+      setMessage('Настройки сохранены в демо-режиме.');
+      return;
+    }
+    setPending(true);
+    const result = await updateSettings(settings);
+    setMessage(result.ok ? 'Настройки сайта сохранены.' : result.error);
+    setPending(false);
+  }
+
   return (
-    <div className="admin-panel">
-      <h2>Настройки сайта</h2>
-      <form className="entity-form">
+    <div className="admin-grid two-columns">
+      <form className="admin-panel entity-form" onSubmit={saveSettings}>
+        <p className="eyebrow">Публичные параметры</p>
+        <h2>Настройки сайта</h2>
         <label htmlFor="setting-title">Название сайта</label>
-        <input id="setting-title" name="siteTitle" defaultValue="NTE Meta" />
-        <label htmlFor="setting-api">API endpoint</label>
         <input
-          id="setting-api"
-          name="api"
-          defaultValue={
-            hasApiBase() ? 'VITE_API_BASE_URL подключен' : 'Не подключен'
+          id="setting-title"
+          name="siteTitle"
+          value={settings.site.title}
+          minLength={2}
+          maxLength={60}
+          onChange={(event) =>
+            setSettings((current) => ({
+              ...current,
+              site: { ...current.site, title: event.target.value },
+            }))
           }
+          required
         />
-        <button className="primary-button" type="button">
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={settings.site.registrationEnabled}
+            onChange={(event) =>
+              setSettings((current) => ({
+                ...current,
+                site: {
+                  ...current.site,
+                  registrationEnabled: event.target.checked,
+                },
+              }))
+            }
+          />
+          Регистрация новых пользователей
+        </label>
+        <label className="toggle-row">
+          <input type="checkbox" checked disabled readOnly />
+          Обязательное одобрение сливов перед публикацией
+        </label>
+        <button className="primary-button" type="submit" disabled={pending}>
           <Settings aria-hidden="true" />
-          Сохранить
+          {pending ? 'Сохраняем...' : 'Сохранить'}
         </button>
+        <p className="form-message" aria-live="polite">
+          {loading ? 'Загружаем настройки...' : message}
+        </p>
+      </form>
+      <form className="admin-panel entity-form" onSubmit={saveSettings}>
+        <p className="eyebrow">Поисковые системы</p>
+        <h2>SEO</h2>
+        <label htmlFor="setting-canonical">Canonical URL</label>
+        <input
+          id="setting-canonical"
+          name="canonical"
+          type="url"
+          value={settings.seo.canonical}
+          onChange={(event) =>
+            setSettings((current) => ({
+              ...current,
+              seo: { ...current.seo, canonical: event.target.value },
+            }))
+          }
+          required
+        />
+        <label htmlFor="setting-description">Meta description</label>
+        <textarea
+          id="setting-description"
+          name="description"
+          value={settings.seo.description}
+          minLength={20}
+          maxLength={180}
+          rows={5}
+          onChange={(event) =>
+            setSettings((current) => ({
+              ...current,
+              seo: { ...current.seo, description: event.target.value },
+            }))
+          }
+          required
+        />
+        <button className="primary-button" type="submit" disabled={pending}>
+          <Settings aria-hidden="true" />
+          {pending ? 'Сохраняем...' : 'Сохранить SEO'}
+        </button>
+        <small>API: {hasApiBase() ? 'Worker подключен' : 'демо-режим'}</small>
       </form>
     </div>
   );

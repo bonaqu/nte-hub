@@ -1,4 +1,8 @@
-import { expect, test } from '@playwright/test';
+import {
+  expect,
+  request as createRequestContext,
+  test,
+} from '@playwright/test';
 
 const apiBase = 'http://127.0.0.1:8788';
 
@@ -152,6 +156,103 @@ test('auth, comments and reactions work through Worker and D1', async ({
 
   expect(
     (await request.delete(`${apiBase}/api/guides/${guideId}`)).ok(),
+  ).toBeTruthy();
+
+  const memberContext = await createRequestContext.newContext();
+  const memberUsername = `${username}_member`;
+  const memberResponse = await memberContext.post(
+    `${apiBase}/api/auth/register`,
+    {
+      data: {
+        username: memberUsername,
+        password,
+        confirmPassword: password,
+      },
+    },
+  );
+  expect(memberResponse.status()).toBe(201);
+  const memberId = (await memberResponse.json()).data.user.id;
+  await memberContext.dispose();
+
+  const usersResponse = await request.get(`${apiBase}/api/users`);
+  expect(usersResponse.ok()).toBeTruthy();
+  expect(
+    (await usersResponse.json()).data.some(
+      (user: { id: string; username: string }) =>
+        user.id === memberId && user.username === memberUsername,
+    ),
+  ).toBeTruthy();
+
+  const roleResponse = await request.patch(
+    `${apiBase}/api/users/${memberId}/role`,
+    { data: { role: 'editor' } },
+  );
+  expect(roleResponse.ok()).toBeTruthy();
+
+  const settingsResponse = await request.patch(`${apiBase}/api/settings`, {
+    data: {
+      site: {
+        title: 'NTE Meta',
+        language: 'ru',
+        registrationEnabled: false,
+        leaksRequireApproval: false,
+      },
+      seo: {
+        canonical: 'https://bonaqu.github.io/nte-hub/',
+        description:
+          'Русскоязычный meta-hub по Neverness to Everness с глубокими гайдами и тир-листами.',
+      },
+    },
+  });
+  expect(settingsResponse.ok()).toBeTruthy();
+
+  const savedSettings = await request.get(`${apiBase}/api/settings`);
+  expect(savedSettings.ok()).toBeTruthy();
+  await expect(savedSettings.json()).resolves.toMatchObject({
+    data: {
+      site: {
+        registrationEnabled: false,
+        leaksRequireApproval: true,
+      },
+    },
+  });
+
+  const blockedContext = await createRequestContext.newContext();
+  const blockedRegistration = await blockedContext.post(
+    `${apiBase}/api/auth/register`,
+    {
+      data: {
+        username: `${username}_blocked`,
+        password,
+        confirmPassword: password,
+      },
+    },
+  );
+  expect(blockedRegistration.status()).toBe(403);
+  await blockedContext.dispose();
+
+  expect(
+    (
+      await request.patch(`${apiBase}/api/settings`, {
+        data: {
+          site: {
+            title: 'NTE Meta',
+            language: 'ru',
+            registrationEnabled: true,
+            leaksRequireApproval: true,
+          },
+          seo: {
+            canonical: 'https://bonaqu.github.io/nte-hub/',
+            description:
+              'Русскоязычный meta-hub по Neverness to Everness с глубокими гайдами и тир-листами.',
+          },
+        },
+      })
+    ).ok(),
+  ).toBeTruthy();
+
+  expect(
+    (await request.delete(`${apiBase}/api/users/${memberId}`)).ok(),
   ).toBeTruthy();
 
   const nextPassword = 'Playwright-New-Strong-84!';
