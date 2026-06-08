@@ -98,48 +98,29 @@ npm run test:ui
 
 ## Production deploy
 
-### 1. Авторизовать Cloudflare CLI
+Текущие production-ресурсы:
+
+- Frontend: `https://bonaqu.github.io/nte-hub/`
+- API: `https://nte-meta-api.bonaqu.workers.dev`
+- D1: `nte-meta-db`, регион `WEUR`
+
+Cloudflare D1 создан, миграции применены, Worker развернут. `OWNER_BOOTSTRAP_TOKEN` хранится только как Cloudflare secret.
+
+### Обновить production
 
 ```powershell
-npx wrangler login
-```
-
-Откроется Cloudflare. Подтвердите доступ Wrangler.
-
-### 2. Создать D1
-
-```powershell
-npx wrangler d1 create nte-meta-db
-```
-
-Скопируйте выданный `database_id` и замените нулевой UUID в обоих блоках `d1_databases` файла `wrangler.jsonc`.
-
-### 3. Защитить создание первого owner
-
-```powershell
-$bytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-$bootstrapToken = [Convert]::ToBase64String($bytes)
-$bootstrapToken | npx wrangler secret put OWNER_BOOTSTRAP_TOKEN
-```
-
-Не публикуйте `$bootstrapToken` и не добавляйте его в Git.
-
-### 4. Миграции и Worker
-
-```powershell
+Set-Location "D:\Projects\nte-hub"
 npm run db:migrate:remote
 npm run worker:deploy -- --env=""
 ```
 
-Сохраните URL вида `https://nte-meta-api.<subdomain>.workers.dev`.
-
-### 5. Создать owner
+### Создать первого owner
 
 ```powershell
-$workerUrl = "https://nte-meta-api.YOUR_SUBDOMAIN.workers.dev"
+$workerUrl = "https://nte-meta-api.bonaqu.workers.dev"
 $ownerLogin = "YOUR_OWNER_LOGIN"
 $ownerPassword = Read-Host "Новый пароль owner"
+$bootstrapToken = Read-Host "Одноразовый код owner"
 $body = @{
   username = $ownerLogin
   password = $ownerPassword
@@ -159,15 +140,11 @@ npx wrangler secret delete OWNER_BOOTSTRAP_TOKEN
 
 Первый пользователь создается как `owner`. Следующие регистрации получают роль `user`.
 
-### 6. Подключить GitHub Pages
+После создания owner Cloudflare secret можно оставить: Worker больше не использует его для обычных регистраций, а конфигурация требует его наличия перед каждым production deploy.
 
-В GitHub откройте `Settings -> Secrets and variables -> Actions`.
+### GitHub Actions
 
-Добавьте repository variable:
-
-```text
-VITE_API_BASE_URL=https://nte-meta-api.YOUR_SUBDOMAIN.workers.dev
-```
+Repository variable `VITE_API_BASE_URL` должна содержать `https://nte-meta-api.bonaqu.workers.dev`.
 
 Для workflow `Deploy Cloudflare Worker` добавьте secrets:
 
@@ -178,7 +155,7 @@ CLOUDFLARE_ACCOUNT_ID
 
 Cloudflare API Token должен иметь минимум `Workers Scripts: Edit` и `D1: Edit` для нужного аккаунта.
 
-В `Settings -> Pages -> Build and deployment` выберите `GitHub Actions`. Push в `main` запустит проверки и GitHub Pages. Worker workflow запускается вручную в разделе `Actions`.
+GitHub Pages собирается workflow `Deploy GitHub Pages`. Worker workflow запускается вручную в разделе `Actions`.
 
 ## Роли
 

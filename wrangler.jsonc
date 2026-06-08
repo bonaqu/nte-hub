@@ -4,9 +4,14 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-06-03",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
+  },
+  "secrets": {
+    "required": ["OWNER_BOOTSTRAP_TOKEN"],
   },
   "vars": {
     "FRONTEND_ORIGIN": "https://bonaqu.github.io",
@@ -15,7 +20,7 @@
     {
       "binding": "DB",
       "database_name": "nte-meta-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "2fd287de-1361-44e7-89fd-8264cba300dc",
       "migrations_dir": "./migrations",
     },
   ],
