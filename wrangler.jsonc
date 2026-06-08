@@ -1,13 +1,38 @@
 {
-  "name": "nte-hub",
-
-  "compatibility_date": "2026-05-08",
-
-  "assets": {
-    "directory": "./public"
-  },
-
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nte-meta-api",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-06-03",
+  "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  "vars": {
+    "FRONTEND_ORIGIN": "https://bonaqu.github.io",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nte-meta-db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "./migrations",
+    },
+  ],
+  "env": {
+    "staging": {
+      "name": "nte-meta-api-staging",
+      "vars": {
+        "FRONTEND_ORIGIN": "http://127.0.0.1:4173",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "nte-meta-db",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "./migrations",
+        },
+      ],
+    },
+  },
 }
