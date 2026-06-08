@@ -504,6 +504,21 @@ async function handleAuth(request, env, parts, ctx) {
     return response;
   }
 
+  if (request.method === 'PATCH' && parts[1] === 'profile') {
+    const user = await requireRole(request, env, 'user');
+    const body = await readJson(request);
+    const displayName = cleanString(body.displayName, 2, 40);
+    await env.DB.prepare(
+      'UPDATE users SET display_name = ?, updated_at = current_timestamp WHERE id = ?',
+    )
+      .bind(displayName, user.id)
+      .run();
+    ctx.waitUntil(
+      logAudit(env, user.id, 'auth.profile', user.id, { displayName }),
+    );
+    return json({ data: { ...user, displayName } });
+  }
+
   if (request.method === 'GET' && parts[1] === 'me') {
     const user = await getAuthUser(request, env);
     if (!user) {
@@ -1041,14 +1056,35 @@ async function handleComments(request, env, ctx) {
     const targetType = url.searchParams.get('targetType');
     const targetId = url.searchParams.get('targetId');
     if (!targetType || !targetId) {
-      return json({ data: [] });
+      await requireRole(request, env, 'moderator');
+      const rows = await env.DB.prepare(
+        `SELECT comments.*, users.display_name AS author_name
+         FROM comments
+         LEFT JOIN users ON users.id = comments.user_id
+         ORDER BY comments.created_at DESC
+         LIMIT 200`,
+      ).all();
+      return json({ data: rows.results.map(serializeComment) });
     }
+    const orderBy =
+      url.searchParams.get('sort') === 'popular'
+        ? 'comments.score DESC, comments.created_at DESC'
+        : 'comments.created_at DESC';
     const rows = await env.DB.prepare(
       `SELECT comments.*, users.display_name AS author_name
        FROM comments
        LEFT JOIN users ON users.id = comments.user_id
-       WHERE target_type = ? AND target_id = ? AND comments.status = 'visible'
-       ORDER BY created_at DESC`,
+       WHERE target_type = ?
+         AND target_id = ?
+         AND comments.status = 'visible'
+         AND (
+           comments.parent_id IS NULL
+           OR EXISTS (
+             SELECT 1 FROM comments AS parent
+             WHERE parent.id = comments.parent_id AND parent.status = 'visible'
+           )
+         )
+       ORDER BY ${orderBy}`,
     )
       .bind(targetType, targetId)
       .all();
@@ -1064,6 +1100,18 @@ async function handleComments(request, env, ctx) {
       return json({ error: 'Неизвестный тип объекта комментария' }, 400);
     }
     const targetId = cleanString(body.targetId, 1, 80);
+    const parentId = body.parentId ? cleanString(body.parentId, 1, 80) : null;
+    if (parentId) {
+      const parent = await env.DB.prepare(
+        `SELECT id FROM comments
+         WHERE id = ? AND target_type = ? AND target_id = ? AND status = 'visible'`,
+      )
+        .bind(parentId, targetType, targetId)
+        .first();
+      if (!parent) {
+        return json({ error: 'Родительский комментарий не найден' }, 400);
+      }
+    }
     const id = crypto.randomUUID();
     await env.DB.prepare(
       `INSERT INTO comments (id, target_type, target_id, parent_id, user_id, body_markdown)
@@ -1073,7 +1121,7 @@ async function handleComments(request, env, ctx) {
         id,
         targetType,
         targetId,
-        body.parentId || null,
+        parentId,
         actor.id,
         cleanString(body.body, 1, 4000),
       )
@@ -1082,13 +1130,16 @@ async function handleComments(request, env, ctx) {
       {
         data: {
           id,
+          userId: actor.id,
           targetType,
           targetId,
-          parentId: body.parentId || undefined,
+          parentId: parentId || undefined,
           author: actor.displayName,
           body: String(body.body).trim(),
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           score: 0,
+          status: 'visible',
         },
       },
       201,
@@ -1116,12 +1167,42 @@ async function handleComments(request, env, ctx) {
 
   if (request.method === 'PATCH') {
     const body = await readJson(request);
+    const updates = [];
+    const values = [];
+
+    if (body.body !== undefined) {
+      updates.push('body_markdown = ?');
+      values.push(cleanString(body.body, 1, 4000));
+    }
+
+    if (body.status !== undefined) {
+      if (!canModerate) {
+        return json({ error: 'Изменять статус может только модератор' }, 403);
+      }
+      const status = String(body.status);
+      if (!['visible', 'moderated', 'deleted'].includes(status)) {
+        return json({ error: 'Неизвестный статус комментария' }, 400);
+      }
+      updates.push('status = ?');
+      values.push(status);
+    }
+
+    if (updates.length === 0) {
+      return json({ error: 'Нет полей для обновления' }, 400);
+    }
+
     await env.DB.prepare(
-      'UPDATE comments SET body_markdown = ?, updated_at = current_timestamp WHERE id = ?',
+      `UPDATE comments
+       SET ${updates.join(', ')}, updated_at = current_timestamp
+       WHERE id = ?`,
     )
-      .bind(cleanString(body.body, 1, 4000), match[1])
+      .bind(...values, match[1])
       .run();
-    ctx.waitUntil(logAudit(env, actor.id, 'comments.update', match[1], {}));
+    ctx.waitUntil(
+      logAudit(env, actor.id, 'comments.update', match[1], {
+        status: body.status,
+      }),
+    );
     return json({ data: { success: true } });
   }
 
@@ -1190,6 +1271,21 @@ async function handleReactions(request, env, parts, ctx) {
     )
       .bind(id, actor.id, targetType, targetId, reactionType, 1)
       .run();
+    if (targetType === 'comment' && reactionType === 'useful') {
+      await env.DB.prepare(
+        `UPDATE comments
+         SET score = (
+           SELECT COALESCE(SUM(value), 0)
+           FROM reactions
+           WHERE target_type = 'comment'
+             AND target_id = comments.id
+             AND reaction_type = 'useful'
+         )
+         WHERE id = ?`,
+      )
+        .bind(targetId)
+        .run();
+    }
     ctx.waitUntil(
       logAudit(env, actor.id, 'reactions.upsert', body.targetId, body),
     );
@@ -1332,13 +1428,16 @@ function serializeLeak(row) {
 function serializeComment(row) {
   return {
     id: row.id,
+    userId: row.user_id,
     targetType: row.target_type,
     targetId: row.target_id,
     parentId: row.parent_id || undefined,
     author: row.author_name || 'Пользователь',
     body: row.body_markdown,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
     score: row.score || 0,
+    status: row.status,
   };
 }
 

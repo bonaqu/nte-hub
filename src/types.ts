@@ -143,12 +143,15 @@ export interface VideoGuide {
 
 export interface Comment {
   id: string;
+  userId?: string;
   targetType: 'guide' | 'news' | 'leak' | 'comment';
   targetId: string;
   author: string;
   body: string;
   createdAt: string;
+  updatedAt?: string;
   score: number;
+  status?: 'visible' | 'moderated' | 'deleted';
   parentId?: string;
 }
 

@@ -10,7 +10,9 @@
 - Worker REST API с D1, валидацией, CORS, rate limit, audit log и проверкой ролей.
 - Регистрация, вход, выход, смена пароля и `HttpOnly` session cookie.
 - PBKDF2-SHA-256, индивидуальная соль, 180000 итераций; открытые пароли не хранятся.
-- Комментарии и реакции работают через API; один пользователь не может одновременно держать like и dislike.
+- Профиль поддерживает изменение отображаемого имени и безопасную смену пароля с завершением всех сессий.
+- Комментарии поддерживают ответы, сортировку, редактирование, удаление, отметку полезности и очередь модерации.
+- Реакции работают через API; один пользователь не может одновременно держать like и dislike.
 - Черновики видят только editor/admin/owner; неподтвержденные сливы публично не выдаются.
 - Playwright проверяет frontend, Worker, D1, auth, comments, reactions и logout.
 
@@ -186,7 +188,7 @@ Cloudflare API Token должен иметь минимум `Workers Scripts: Ed
 
 ## API
 
-Поддержаны `/api/auth/*`, `/api/users/*`, CRUD для `characters`, `guides`, `rotations`, `teams`, `tierlists`, `news`, `leaks`, а также `guide-sections`, `comments`, `reactions`, `settings`, `sources` и `audit-log`.
+Поддержаны `/api/auth/*`, включая профиль и смену пароля, `/api/users/*`, CRUD для `characters`, `guides`, `rotations`, `teams`, `tierlists`, `news`, `leaks`, а также `guide-sections`, `comments`, `reactions`, `settings`, `sources` и `audit-log`.
 
 Команды и тир-листы принимают вложенные `members`/`items`. Гайд может создаваться с `sections`, а затем секции редактируются и сортируются отдельными endpoints.
 

@@ -316,6 +316,11 @@
     transform: translateY(-1px);
   }
 
+  .primary-button.danger-action {
+    background: #ff6b7a;
+    color: #120407;
+  }
+
   .ghost-button {
     border: 1px solid var(--border);
     background: var(--surface);
@@ -335,6 +340,10 @@
     padding-inline: 0;
     background: transparent;
     color: var(--cyan);
+  }
+
+  .text-button.danger {
+    color: #ff9ba6;
   }
 
   .button-row {
@@ -805,6 +814,70 @@
     font-size: 0.84rem;
   }
 
+  .comment-card.is-reply {
+    margin-inline-start: clamp(18px, 5vw, 54px);
+    border-inline-start: 2px solid var(--cyan);
+  }
+
+  .comment-heading,
+  .comment-actions,
+  .reply-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .comment-actions {
+    justify-content: flex-start;
+  }
+
+  .comment-actions .text-button {
+    min-block-size: 34px;
+    font-size: 0.84rem;
+  }
+
+  .comment-edit {
+    display: grid;
+    gap: 8px;
+  }
+
+  .reply-context {
+    padding: 8px 10px;
+    border-inline-start: 2px solid var(--pink);
+    background: rgb(255 255 255 / 0.035);
+  }
+
+  .comment-card.status-moderated {
+    border-color: rgb(255 209 102 / 0.42);
+  }
+
+  .comment-card.status-deleted {
+    opacity: 0.58;
+  }
+
+  .confirm-dialog {
+    inline-size: min(92vw, 440px);
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: var(--shadow);
+  }
+
+  .confirm-dialog::backdrop {
+    background: rgb(1 3 8 / 0.76);
+    backdrop-filter: blur(5px);
+  }
+
+  .confirm-dialog form {
+    display: grid;
+    gap: 14px;
+    padding: 22px;
+  }
+
   .page-hero {
     display: grid;
     gap: 10px;
@@ -1129,6 +1202,15 @@
 
   .comment-form .primary-button {
     justify-self: start;
+  }
+
+  .compact-select {
+    display: grid;
+    gap: 5px;
+    min-inline-size: 150px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 700;
   }
 
   .admin-shell {

@@ -125,12 +125,18 @@ export async function register(
   username: string,
   password: string,
   confirmPassword: string,
+  bootstrapToken?: string,
 ) {
   const result = await request<{ token: string; user: User }>(
     '/api/auth/register',
     {
       method: 'POST',
-      body: JSON.stringify({ username, password, confirmPassword }),
+      body: JSON.stringify({
+        username,
+        password,
+        confirmPassword,
+        bootstrapToken,
+      }),
     },
   );
 
@@ -157,12 +163,38 @@ export async function me() {
   return result;
 }
 
+export async function updateProfile(displayName: string) {
+  return request<User>('/api/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ displayName }),
+  });
+}
+
+export async function changePassword(
+  currentPassword: string,
+  nextPassword: string,
+  nextConfirm: string,
+) {
+  const result = await request<{ success: boolean }>(
+    '/api/auth/change-password',
+    {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, nextPassword, nextConfirm }),
+    },
+  );
+  if (result.ok) {
+    sessionToken = '';
+  }
+  return result;
+}
+
 export async function loadComments(
   targetType: Comment['targetType'],
   targetId: string,
+  sort: 'new' | 'popular' = 'new',
 ) {
   return request<Comment[]>(
-    `/api/comments?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`,
+    `/api/comments?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}&sort=${sort}`,
   );
 }
 
@@ -176,6 +208,26 @@ export async function createComment(
     method: 'POST',
     body: JSON.stringify({ targetType, targetId, body, parentId }),
   });
+}
+
+export async function updateComment(
+  id: string,
+  payload: { body?: string; status?: Comment['status'] },
+) {
+  return request<{ success: boolean }>(`/api/comments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteComment(id: string) {
+  return request<{ success: boolean }>(`/api/comments/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function loadModerationComments() {
+  return request<Comment[]>('/api/comments');
 }
 
 export async function loadReactionSummary(

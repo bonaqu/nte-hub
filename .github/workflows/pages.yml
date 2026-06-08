@@ -2,7 +2,9 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [bonaqu_projects]
+  pull_request:
+    branches: [bonaqu_projects]
   workflow_dispatch:
 
 permissions:
@@ -45,6 +47,7 @@ jobs:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

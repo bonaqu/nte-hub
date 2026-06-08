@@ -15,7 +15,9 @@ import {
   MessageCircle,
   Newspaper,
   PanelLeft,
+  Pencil,
   Plus,
+  Reply,
   Search,
   Settings,
   ShieldCheck,
@@ -23,6 +25,7 @@ import {
   Star,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
   UserCircle,
   Users,
   Video,
@@ -30,9 +33,12 @@ import {
 } from 'lucide-react';
 import { seedData } from './data/seed';
 import {
+  changePassword,
   createComment,
+  deleteComment,
   hasApiBase,
   loadComments,
+  loadModerationComments,
   loadReactionSummary,
   loadSiteData,
   login,
@@ -41,6 +47,8 @@ import {
   register,
   saveEntity,
   sendReaction,
+  updateComment,
+  updateProfile,
 } from './lib/api';
 import { applyMarkdownAction, MarkdownPreview } from './lib/markdown';
 import { getYoutubeEmbedUrl } from './lib/youtube';
@@ -68,6 +76,13 @@ const navItems = [
 ];
 
 const tierOrder: Tier[] = ['S+', 'S', 'A', 'B', 'C'];
+const roleWeight: Record<User['role'], number> = {
+  user: 1,
+  moderator: 2,
+  editor: 3,
+  admin: 4,
+  owner: 5,
+};
 const roleOptions = [
   'Все роли',
   'Burst DPS',
@@ -1203,20 +1218,62 @@ function CommentsBlock({
   );
   const [comments, setComments] = useState(fallbackComments);
   const [body, setBody] = useState('');
+  const [sort, setSort] = useState<'new' | 'popular'>('new');
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [editingId, setEditingId] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [actionId, setActionId] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
+  const threadedComments = useMemo(() => {
+    const byParent = new Map<string, Comment[]>();
+    const roots: Comment[] = [];
+
+    comments.forEach((comment) => {
+      if (comment.parentId) {
+        const children = byParent.get(comment.parentId) || [];
+        children.push(comment);
+        byParent.set(comment.parentId, children);
+      } else {
+        roots.push(comment);
+      }
+    });
+
+    const result: Comment[] = [];
+    const append = (comment: Comment) => {
+      result.push(comment);
+      (byParent.get(comment.id) || [])
+        .sort(
+          (left, right) =>
+            new Date(left.createdAt).getTime() -
+            new Date(right.createdAt).getTime(),
+        )
+        .forEach(append);
+    };
+    roots.forEach(append);
+    comments
+      .filter(
+        (comment) =>
+          comment.parentId &&
+          !comments.some((item) => item.id === comment.parentId),
+      )
+      .forEach((comment) => result.push(comment));
+    return result;
+  }, [comments]);
 
   useEffect(() => {
     setComments(fallbackComments);
     if (!hasApiBase()) return;
     let mounted = true;
-    loadComments(targetType, targetId).then((result) => {
+    loadComments(targetType, targetId, sort).then((result) => {
       if (mounted && result.ok) setComments(result.data);
     });
     return () => {
       mounted = false;
     };
-  }, [targetId, targetType]);
+  }, [sort, targetId, targetType]);
 
   async function submitComment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1231,10 +1288,11 @@ function CommentsBlock({
 
     setPending(true);
     setMessage('');
-    const result = await createComment(targetType, targetId, body);
+    const result = await createComment(targetType, targetId, body, replyTo?.id);
     if (result.ok) {
       setComments((current) => [result.data, ...current]);
       setBody('');
+      setReplyTo(null);
       setMessage('Комментарий опубликован.');
     } else {
       setMessage(result.error);
@@ -1242,11 +1300,110 @@ function CommentsBlock({
     setPending(false);
   }
 
+  async function saveEdit(comment: Comment) {
+    if (!editBody.trim()) {
+      setMessage('Комментарий не может быть пустым.');
+      return;
+    }
+    setActionId(comment.id);
+    const result = await updateComment(comment.id, { body: editBody });
+    if (result.ok) {
+      setComments((current) =>
+        current.map((item) =>
+          item.id === comment.id
+            ? {
+                ...item,
+                body: editBody.trim(),
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      setEditingId('');
+      setMessage('Комментарий обновлен.');
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+  }
+
+  function requestDelete(comment: Comment) {
+    setDeleteTarget(comment);
+    deleteDialogRef.current?.showModal();
+  }
+
+  async function confirmDelete() {
+    const comment = deleteTarget;
+    if (!comment) return;
+    deleteDialogRef.current?.close();
+    setActionId(comment.id);
+    const result = await deleteComment(comment.id);
+    if (result.ok) {
+      setComments((current) =>
+        current.filter(
+          (item) => item.id !== comment.id && item.parentId !== comment.id,
+        ),
+      );
+      setMessage('Комментарий удален.');
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+    setDeleteTarget(null);
+  }
+
+  async function markUseful(comment: Comment) {
+    if (!user) {
+      setMessage('Войдите, чтобы оценивать комментарии.');
+      return;
+    }
+    setActionId(comment.id);
+    const result = await sendReaction('comment', comment.id, 'useful');
+    if (result.ok) {
+      setComments((current) =>
+        current.map((item) =>
+          item.id === comment.id
+            ? { ...item, score: result.data.useful }
+            : item,
+        ),
+      );
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+  }
+
   return (
     <section className="content-band">
-      <SectionHeader eyebrow="Комьюнити" title="Комментарии и обсуждения" />
+      <div className="panel-title-row">
+        <SectionHeader eyebrow="Комьюнити" title="Комментарии и обсуждения" />
+        <label className="compact-select">
+          Сортировка
+          <select
+            value={sort}
+            onChange={(event) =>
+              setSort(event.target.value as 'new' | 'popular')
+            }
+          >
+            <option value="new">Новые</option>
+            <option value="popular">Популярные</option>
+          </select>
+        </label>
+      </div>
       <form className="comment-form" onSubmit={submitComment}>
         <label htmlFor="comment-body">Комментарий</label>
+        {replyTo ? (
+          <div className="reply-context">
+            <span>Ответ для {replyTo.author}</span>
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setReplyTo(null)}
+            >
+              Отменить
+            </button>
+          </div>
+        ) : null}
         <textarea
           id="comment-body"
           name="body"
@@ -1275,14 +1432,102 @@ function CommentsBlock({
         </p>
       </form>
       <div className="comment-list">
-        {comments.length ? (
-          comments.map((comment) => (
-            <article className="comment-card" key={comment.id}>
-              <strong>{comment.author}</strong>
-              <p>{comment.body}</p>
-              <span>
-                {formatDate(comment.createdAt)} · {comment.score} полезно
-              </span>
+        {threadedComments.length ? (
+          threadedComments.map((comment) => (
+            <article
+              className={`comment-card ${comment.parentId ? 'is-reply' : ''}`}
+              key={comment.id}
+            >
+              <div className="comment-heading">
+                <strong>{comment.author}</strong>
+                <span>
+                  {formatDate(comment.createdAt)}
+                  {comment.updatedAt && comment.updatedAt !== comment.createdAt
+                    ? ' · изменено'
+                    : ''}
+                </span>
+              </div>
+              {editingId === comment.id ? (
+                <div className="comment-edit">
+                  <label htmlFor={`edit-${comment.id}`}>
+                    Изменить комментарий
+                  </label>
+                  <textarea
+                    id={`edit-${comment.id}`}
+                    value={editBody}
+                    onChange={(event) => setEditBody(event.target.value)}
+                    rows={3}
+                    maxLength={4000}
+                  />
+                  <div className="button-row">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={actionId === comment.id}
+                      onClick={() => saveEdit(comment)}
+                    >
+                      Сохранить
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => setEditingId('')}
+                    >
+                      Отменить
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p>{comment.body}</p>
+              )}
+              <div className="comment-actions">
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={actionId === comment.id}
+                  onClick={() => markUseful(comment)}
+                >
+                  <ThumbsUp aria-hidden="true" />
+                  Полезно {comment.score}
+                </button>
+                {user ? (
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => {
+                      setReplyTo(comment);
+                      setBody('');
+                    }}
+                  >
+                    <Reply aria-hidden="true" />
+                    Ответить
+                  </button>
+                ) : null}
+                {user?.id === comment.userId ? (
+                  <>
+                    <button
+                      className="text-button"
+                      type="button"
+                      onClick={() => {
+                        setEditingId(comment.id);
+                        setEditBody(comment.body);
+                      }}
+                    >
+                      <Pencil aria-hidden="true" />
+                      Изменить
+                    </button>
+                    <button
+                      className="text-button danger"
+                      type="button"
+                      disabled={actionId === comment.id}
+                      onClick={() => requestDelete(comment)}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      Удалить
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </article>
           ))
         ) : (
@@ -1292,6 +1537,29 @@ function CommentsBlock({
           />
         )}
       </div>
+      <dialog
+        className="confirm-dialog"
+        ref={deleteDialogRef}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <form method="dialog">
+          <h2>Удалить комментарий?</h2>
+          <p>Комментарий и его ответы перестанут отображаться в обсуждении.</p>
+          <div className="button-row">
+            <button className="ghost-button" value="cancel">
+              Отменить
+            </button>
+            <button
+              className="primary-button danger-action"
+              type="button"
+              onClick={confirmDelete}
+            >
+              <Trash2 aria-hidden="true" />
+              Удалить
+            </button>
+          </div>
+        </form>
+      </dialog>
     </section>
   );
 }
@@ -1512,6 +1780,7 @@ function CommunityPage({ data, user }: { data: SiteData; user: User | null }) {
 }
 
 const adminTabs = [
+  'profile',
   'dashboard',
   'characters',
   'guides',
@@ -1525,6 +1794,7 @@ const adminTabs = [
 ] as const;
 
 const adminLabels: Record<(typeof adminTabs)[number], string> = {
+  profile: 'Профиль',
   dashboard: 'Dashboard',
   characters: 'Персонажи',
   guides: 'Гайды',
@@ -1535,6 +1805,20 @@ const adminLabels: Record<(typeof adminTabs)[number], string> = {
   users: 'Пользователи',
   settings: 'Настройки',
   sources: 'Источники',
+};
+
+const adminTabRole: Record<(typeof adminTabs)[number], User['role']> = {
+  profile: 'user',
+  dashboard: 'moderator',
+  characters: 'editor',
+  guides: 'editor',
+  tierlists: 'editor',
+  news: 'admin',
+  leaks: 'admin',
+  comments: 'moderator',
+  users: 'admin',
+  settings: 'admin',
+  sources: 'admin',
 };
 
 function AdminPage({
@@ -1548,13 +1832,28 @@ function AdminPage({
   setUser: (user: User | null) => void;
   setData: React.Dispatch<React.SetStateAction<SiteData>>;
 }) {
-  const [tab, setTab] = useState<(typeof adminTabs)[number]>('dashboard');
+  const [tab, setTab] = useState<(typeof adminTabs)[number]>('profile');
+  const visibleTabs = useMemo(
+    () =>
+      user
+        ? adminTabs.filter(
+            (item) => roleWeight[user.role] >= roleWeight[adminTabRole[item]],
+          )
+        : [],
+    [user],
+  );
+
+  useEffect(() => {
+    if (user && !visibleTabs.includes(tab)) {
+      setTab('profile');
+    }
+  }, [tab, user, visibleTabs]);
 
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar" aria-label="Разделы админки">
         <strong>NTE Meta CMS</strong>
-        {adminTabs.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item}
             className={tab === item ? 'active' : ''}
@@ -1588,6 +1887,9 @@ function AdminPage({
                 Выйти
               </button>
             </div>
+            {tab === 'profile' ? (
+              <ProfilePanel user={user} setUser={setUser} />
+            ) : null}
             {tab === 'dashboard' ? <AdminDashboard data={data} /> : null}
             {tab === 'characters' ? <AdminCharacters data={data} /> : null}
             {tab === 'guides' ? (
@@ -1596,7 +1898,9 @@ function AdminPage({
             {tab === 'tierlists' ? <AdminTierlists data={data} /> : null}
             {tab === 'news' ? <AdminNews data={data} /> : null}
             {tab === 'leaks' ? <AdminLeaks data={data} /> : null}
-            {tab === 'comments' ? <AdminComments data={data} /> : null}
+            {tab === 'comments' ? (
+              <AdminComments data={data} user={user} />
+            ) : null}
             {tab === 'users' ? <AdminUsers /> : null}
             {tab === 'settings' ? <AdminSettings /> : null}
             {tab === 'sources' ? <AdminSources data={data} /> : null}
@@ -1607,9 +1911,142 @@ function AdminPage({
   );
 }
 
+function ProfilePanel({
+  user,
+  setUser,
+}: {
+  user: User;
+  setUser: (user: User | null) => void;
+}) {
+  const [profileMessage, setProfileMessage] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [pending, setPending] = useState('');
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const displayName = String(form.get('displayName') || '').trim();
+    if (!hasApiBase()) {
+      setUser({ ...user, displayName });
+      setProfileMessage('Профиль обновлен в демо-режиме.');
+      return;
+    }
+    setPending('profile');
+    const result = await updateProfile(displayName);
+    if (result.ok) {
+      setUser(result.data);
+      setProfileMessage('Имя профиля обновлено.');
+    } else {
+      setProfileMessage(result.error);
+    }
+    setPending('');
+  }
+
+  async function savePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!hasApiBase()) {
+      setPasswordMessage('Смена пароля доступна после подключения Worker API.');
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    setPending('password');
+    const result = await changePassword(
+      String(form.get('currentPassword') || ''),
+      String(form.get('nextPassword') || ''),
+      String(form.get('nextConfirm') || ''),
+    );
+    if (result.ok) {
+      setPasswordMessage(
+        'Пароль изменен. Все сессии завершены, войдите снова.',
+      );
+      event.currentTarget.reset();
+      setUser(null);
+    } else {
+      setPasswordMessage(result.error);
+    }
+    setPending('');
+  }
+
+  return (
+    <div className="admin-grid two-columns">
+      <form className="admin-panel entity-form" onSubmit={saveProfile}>
+        <p className="eyebrow">Аккаунт {user.username}</p>
+        <h2>Профиль</h2>
+        <label htmlFor="profile-display-name">Отображаемое имя</label>
+        <input
+          id="profile-display-name"
+          name="displayName"
+          defaultValue={user.displayName}
+          minLength={2}
+          maxLength={40}
+          autoComplete="nickname"
+          required
+        />
+        <label htmlFor="profile-role">Роль</label>
+        <input id="profile-role" value={user.role} readOnly disabled />
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={pending === 'profile'}
+        >
+          <CheckCircle2 aria-hidden="true" />
+          {pending === 'profile' ? 'Сохраняем...' : 'Сохранить профиль'}
+        </button>
+        <p className="form-message" aria-live="polite">
+          {profileMessage}
+        </p>
+      </form>
+
+      <form className="admin-panel entity-form" onSubmit={savePassword}>
+        <h2>Смена пароля</h2>
+        <label htmlFor="current-password">Текущий пароль</label>
+        <input
+          id="current-password"
+          name="currentPassword"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
+        <label htmlFor="next-password">Новый пароль</label>
+        <input
+          id="next-password"
+          name="nextPassword"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={128}
+          required
+        />
+        <label htmlFor="next-confirm">Повторите новый пароль</label>
+        <input
+          id="next-confirm"
+          name="nextConfirm"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={128}
+          required
+        />
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={pending === 'password'}
+        >
+          <LockKeyhole aria-hidden="true" />
+          {pending === 'password' ? 'Обновляем...' : 'Изменить пароль'}
+        </button>
+        <p className="form-message" aria-live="polite">
+          {passwordMessage}
+        </p>
+      </form>
+    </div>
+  );
+}
+
 function AuthPanel({ setUser }: { setUser: (user: User | null) => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [message, setMessage] = useState('');
+  const [pending, setPending] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1630,6 +2067,7 @@ function AuthPanel({ setUser }: { setUser: (user: User | null) => void }) {
       return;
     }
 
+    setPending(true);
     const result =
       mode === 'login'
         ? await login(username, password)
@@ -1637,6 +2075,7 @@ function AuthPanel({ setUser }: { setUser: (user: User | null) => void }) {
             username,
             password,
             String(form.get('confirmPassword') || ''),
+            String(form.get('bootstrapToken') || '') || undefined,
           );
 
     if (result.ok) {
@@ -1649,6 +2088,7 @@ function AuthPanel({ setUser }: { setUser: (user: User | null) => void }) {
     } else {
       setMessage(result.error);
     }
+    setPending(false);
   }
 
   return (
@@ -1690,11 +2130,28 @@ function AuthPanel({ setUser }: { setUser: (user: User | null) => void }) {
               required
               minLength={8}
             />
+            <label htmlFor="auth-bootstrap">
+              Код первого owner <span>(если настроен)</span>
+            </label>
+            <input
+              id="auth-bootstrap"
+              name="bootstrapToken"
+              type="password"
+              autoComplete="off"
+              aria-describedby="bootstrap-help"
+            />
+            <small id="bootstrap-help">
+              Нужен только при создании самого первого owner-аккаунта.
+            </small>
           </>
         ) : null}
-        <button className="primary-button" type="submit">
+        <button className="primary-button" type="submit" disabled={pending}>
           <LockKeyhole aria-hidden="true" />
-          {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+          {pending
+            ? 'Проверяем...'
+            : mode === 'login'
+              ? 'Войти'
+              : 'Создать аккаунт'}
         </button>
         <button
           className="text-button"
@@ -1982,29 +2439,153 @@ function AdminLeaks({ data }: { data: SiteData }) {
   );
 }
 
-function AdminComments({ data }: { data: SiteData }) {
+function AdminComments({ data, user }: { data: SiteData; user: User }) {
+  const [comments, setComments] = useState<Comment[]>(
+    data.comments.map((comment) => ({
+      ...comment,
+      status: comment.status || 'visible',
+    })),
+  );
+  const [loading, setLoading] = useState(hasApiBase());
+  const [message, setMessage] = useState('');
+  const [actionId, setActionId] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Comment | null>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!hasApiBase()) return;
+    let mounted = true;
+    loadModerationComments().then((result) => {
+      if (!mounted) return;
+      if (result.ok) {
+        setComments(result.data);
+      } else {
+        setMessage(result.error);
+      }
+      setLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function setStatus(
+    comment: Comment,
+    status: 'visible' | 'moderated' | 'deleted',
+  ) {
+    setActionId(comment.id);
+    const result = await updateComment(comment.id, { status });
+    if (result.ok) {
+      setComments((current) =>
+        current.map((item) =>
+          item.id === comment.id ? { ...item, status } : item,
+        ),
+      );
+      setMessage(
+        status === 'visible'
+          ? 'Комментарий восстановлен.'
+          : status === 'deleted'
+            ? 'Комментарий удален.'
+            : 'Комментарий скрыт.',
+      );
+    } else {
+      setMessage(result.error);
+    }
+    setActionId('');
+  }
+
+  function requestDelete(comment: Comment) {
+    setDeleteTarget(comment);
+    deleteDialogRef.current?.showModal();
+  }
+
   return (
     <div className="admin-panel">
-      <h2>Модерация комментариев</h2>
+      <div className="panel-title-row">
+        <div>
+          <p className="eyebrow">Модератор: {user.displayName}</p>
+          <h2>Модерация комментариев</h2>
+        </div>
+        <span>{comments.length} записей</span>
+      </div>
+      <p className="form-message" aria-live="polite">
+        {loading ? 'Загружаем очередь...' : message}
+      </p>
       <div className="comment-list">
-        {data.comments.map((comment) => (
-          <article className="comment-card" key={comment.id}>
-            <strong>{comment.author}</strong>
+        {comments.map((comment) => (
+          <article
+            className={`comment-card status-${comment.status || 'visible'}`}
+            key={comment.id}
+          >
+            <div className="comment-heading">
+              <strong>{comment.author}</strong>
+              <span>
+                {comment.targetType} · {comment.status || 'visible'}
+              </span>
+            </div>
             <p>{comment.body}</p>
             <div className="button-row">
-              <button className="ghost-button" type="button">
-                Скрыть
-              </button>
-              <button className="ghost-button" type="button">
-                Предупреждение
-              </button>
-              <button className="ghost-button danger" type="button">
+              {comment.status === 'visible' ? (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={actionId === comment.id}
+                  onClick={() => setStatus(comment, 'moderated')}
+                >
+                  Скрыть
+                </button>
+              ) : (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={actionId === comment.id}
+                  onClick={() => setStatus(comment, 'visible')}
+                >
+                  Восстановить
+                </button>
+              )}
+              <button
+                className="ghost-button danger"
+                type="button"
+                disabled={
+                  actionId === comment.id || comment.status === 'deleted'
+                }
+                onClick={() => requestDelete(comment)}
+              >
+                <Trash2 aria-hidden="true" />
                 Удалить
               </button>
             </div>
           </article>
         ))}
       </div>
+      <dialog
+        className="confirm-dialog"
+        ref={deleteDialogRef}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <form method="dialog">
+          <h2>Удалить комментарий из очереди?</h2>
+          <p>Запись останется в журнале, но не будет видна пользователям.</p>
+          <div className="button-row">
+            <button className="ghost-button" value="cancel">
+              Отменить
+            </button>
+            <button
+              className="primary-button danger-action"
+              type="button"
+              onClick={async () => {
+                if (!deleteTarget) return;
+                deleteDialogRef.current?.close();
+                await setStatus(deleteTarget, 'deleted');
+              }}
+            >
+              <Trash2 aria-hidden="true" />
+              Удалить
+            </button>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }
